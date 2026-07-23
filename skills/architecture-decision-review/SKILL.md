@@ -1,6 +1,6 @@
 ---
 name: architecture-decision-review
-description: Run a rigorous, evidence-first review of an architecture or platform decision, land it as an ADR, and translate it into tracker stories. Use this whenever the user weighs two or more technical options and asks for advice, a recommendation, a comparison, or a justification — "should we use X or Y", "which project/platform should host this", "is it worth migrating", "help me justify this decision", "how much would we save" — even if they never say "ADR" or "architecture decision". Also use it when the user asks to draft or update an ADR, to create Jira/tracker stories from a design decision, or presents a decision already half-made and wants it validated. The heart of the skill is verifying the user's stated premises against primary sources before recommending, so trigger it even when the user sounds certain of the answer.
+description: Run a rigorous, evidence-first review of an architecture or platform decision, land it as an ADR, and translate it into tracker stories. Use this whenever the user weighs two or more technical options and asks for advice, a recommendation, a comparison, or a justification — "should we use X or Y", "which project/platform should host this", "is it worth migrating", "help me justify this decision", "how much would we save" — even if they never say "ADR" or "architecture decision". Also use it when the user asks to draft or update an ADR, to create Jira/tracker stories from a design decision, or presents a decision already half-made and wants it validated. The heart of the skill is verifying the user's stated premises against primary sources before recommending, so trigger it even when the user sounds certain of the answer. Do NOT use it for generic technology overviews or casual comparisons with no project context to verify and no durable decision to record.
 ---
 
 # Architecture Decision Review
@@ -19,11 +19,18 @@ is the most valuable thing you can deliver, and it must be stated plainly, not s
 
 Before comparing anything, identify the factual claims embedded in the request (costs,
 security posture, platform maturity, who owns what, what already exists) and check each
-against a primary source:
+against a primary source. Start with an access preflight: list the sources those claims
+require (repos, trackers, billing, docs), confirm which you can actually reach, and ask
+for missing links, credentials, or exports up front. If a source stays unreachable, do
+not bluff evidence-gathering — run the review in explicit "claimed vs. verified" mode
+and say which conclusions rest on unverified claims. Tool mechanics below use GitHub
+and Jira as examples; adapt to whatever SCM and tracker the project actually uses.
 
 - **Repos and infrastructure-as-code**: read them directly. For GitHub repos, `gh api`
-  lets you inventory without cloning — list branches by last-commit date to find the
-  live branch (the default branch is often stale), fetch the file tree
+  lets you inventory without cloning — list branches by last-commit date as a signal
+  for the live branch (the default branch is often stale, but recency alone misleads in
+  repos using release branches or trunk-based deploys; corroborate with deploy/CI
+  config and protected-branch settings), fetch the file tree
   (`git/trees/<branch>?recursive=1`), then pull the specific files that answer the
   question (env configs, module lists, sizing). What *exists* in the repo — and what is
   commented out, placeholder, or dormant — is evidence the user's summary may not reflect.
@@ -33,6 +40,10 @@ against a primary source:
 - **Activity signals**: last-commit dates, merged-PR recency, and which environments
   actually exist distinguish a live platform from a stalled one. "Reinstate project X"
   means something very different when X turns out to be dev-only with prod commented out.
+- **Forecast inputs are not verifiable facts**: vendor roadmaps, procurement lead
+  times, commercial quotes, staffing plans. Record each with source, date, confidence,
+  and owner, and keep them visibly distinct from observed evidence in the comparison —
+  a forecast presented as a verified fact is the premise-check failing at its own game.
 
 Report what you verified, what contradicted the framing, and what you could not verify.
 Unverifiable claims stay in the analysis but are explicitly marked ("unconfirmed — verify
@@ -74,6 +85,9 @@ If the lavish skill is available and the session is interactive, build it there 
 7. **Q&A section** — grows during review (Phase 3); answers to stakeholder questions
    live in the artifact so the document stays self-contained for later readers.
 
+Scale the artifact to the decision's stakes: a small or easily reversed decision may
+compress sections 4–7 into a short paragraph each; sections 1–3 are never skipped.
+
 Throughout: values not yet decided stay **TBD** with the deciding owner named. Do not
 invent a concrete hostname, region, or sizing to make prose flow — a plausible-looking
 invented value gets copied into tickets and becomes accidentally load-bearing.
@@ -95,8 +109,11 @@ Stakeholder annotations come in three kinds; handle each differently:
   treatment — a full card, a column in the cost table, an honest re-ranking. Never
   bolt a late option on as a footnote to protect the existing recommendation.
 
-Keep iterating until the stakeholder stops finding corrections. The final chat message
-after each round must summarize what changed and re-state the current recommendation.
+Keep iterating until the stakeholder stops finding corrections. If the stakeholder
+goes quiet or is unavailable, do not stall: deliver the artifact as a review-ready
+draft pending their validation, with open questions and unverified assumptions called
+out. The final chat message after each round must summarize what changed and re-state
+the current recommendation.
 
 ## Phase 4 — Land the ADR
 
@@ -116,9 +133,9 @@ When the stakeholder asks to record the decision:
 5. **Consequences include the revisit triggers** and any constraint the decision
    places on future work.
 6. **Ripple the decision through companion docs**: amend superseded ADRs (an
-   `Amendments` section with date, not a rewrite), update the project's CLAUDE.md
-   constraints/decisions/open-questions, and the solution-architecture doc if one
-   exists. An ADR that contradicts the docs around it is worse than no ADR. Ask the
+   `Amendments` section with date, not a rewrite), update the project's agent/context
+   docs (e.g. CLAUDE.md) if the project uses them to record constraints, decisions, or
+   open questions, and the solution-architecture doc if one exists. An ADR that contradicts the docs around it is worse than no ADR. Ask the
    user before adding change-log entries if the project has that convention.
 7. **Respect the repo's contribution rules**: if main is protected, commit to a fresh
    branch and open a PR; follow the project's attribution and commit-message norms.
@@ -149,13 +166,18 @@ the ADR lands, offer to):
 4. **Comment on superseded stories; don't edit or close them.** A comment stating what
    changed, which new stories replace which parts, and a pointer to the ADR gives the
    story's owner everything needed to re-scope — the status change is their call.
-5. Mechanics worth knowing: Jira's REST v2 accepts wiki markup in descriptions
-   (`h2.`, `*bold*`, `{{code}}`, `*` bullets); create with `project`, `issuetype`,
-   `parent` (the epic), `summary`, `description`. Verify after creating by re-running
-   the parent search.
+5. Mechanics worth knowing (Jira example): many REST v2 setups accept wiki markup in
+   descriptions (`h2.`, `*bold*`, `{{code}}`, `*` bullets), but some instances require
+   ADF or plain text — confirm the format with one test ticket before batch-creating.
+   Create with `project`, `issuetype`, `parent` (the epic), `summary`, `description`.
+   Verify after creating by re-running the parent search.
 
 ## Principles that run through every phase
 
+- **Draft first, write second — for every externally visible write.** ADR commits,
+  doc amendments, PRs, tracker tickets, and comments all get the same gate: show the
+  user the proposed content or diff and get approval before writing. The phase-specific
+  rules below are instances of this one rule, not exceptions to it.
 - **The premise check is the product.** If the evidence supports the user's initial
   lean, say so and quantify it. If it reverses it, lead with the reversal and show the
   evidence. Either way the user should leave knowing *why*, not just *what*.
