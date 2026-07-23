@@ -1,6 +1,6 @@
 ---
 name: architecture-decision-review
-description: Run a rigorous, evidence-first review of an architecture or platform decision and land it as an ADR. Use this whenever the user weighs two or more technical options and asks for advice, a recommendation, a comparison, or a justification — "should we use X or Y", "which project/platform should host this", "is it worth migrating", "help me justify this decision", "how much would we save" — even if they never say "ADR" or "architecture decision". Also use it when the user asks to draft or update an ADR, or presents a decision already half-made and wants it validated. The heart of the skill is verifying the user's stated premises against primary sources before recommending, so trigger it even when the user sounds certain of the answer.
+description: Run a rigorous, evidence-first review of an architecture or platform decision, land it as an ADR, and translate it into tracker stories. Use this whenever the user weighs two or more technical options and asks for advice, a recommendation, a comparison, or a justification — "should we use X or Y", "which project/platform should host this", "is it worth migrating", "help me justify this decision", "how much would we save" — even if they never say "ADR" or "architecture decision". Also use it when the user asks to draft or update an ADR, to create Jira/tracker stories from a design decision, or presents a decision already half-made and wants it validated. The heart of the skill is verifying the user's stated premises against primary sources before recommending, so trigger it even when the user sounds certain of the answer.
 ---
 
 # Architecture Decision Review
@@ -122,6 +122,37 @@ When the stakeholder asks to record the decision:
    user before adding change-log entries if the project has that convention.
 7. **Respect the repo's contribution rules**: if main is protected, commit to a fresh
    branch and open a PR; follow the project's attribution and commit-message norms.
+
+## Phase 5 — Translate the decision into tracker stories
+
+A landed ADR changes the work plan; if nobody turns it into tracked work, the decision
+exists only on paper. When the user asks to create stories from the decision (or once
+the ADR lands, offer to):
+
+1. **Read the existing tree before adding to it.** Find the epic the work belongs
+   under and enumerate its current children — in Jira, children hang off the
+   *children's* `parent` field, so search (`parent = <epic>`), don't trust the epic's
+   own subtask/link lists. You are looking for two things: where the new work belongs,
+   and which existing stories the decision has superseded or re-scoped. Creating new
+   stories while stale ones still say the opposite makes the plan incoherent.
+2. **Derive stories from the ADR's own structure.** Adoption conditions become stories
+   (each sign-off is work someone must drive); each concrete mechanism in the decision
+   details becomes a story (the onboarding, the credential setup, the DNS/cert work,
+   the pipeline change). Give every story: a Context section citing the ADR, verifiable
+   acceptance criteria (not vague intents), and its dependencies on sibling stories.
+3. **Draft first, create second.** Writing to a shared tracker is externally visible —
+   save the full drafts to a local file and show the user a summary for approval before
+   creating anything. The local file also means nothing is lost if tracker access turns
+   out to be broken. Check write access early: read-only API tokens/scopes are common,
+   and discovering that while drafting is fine; discovering it after promising created
+   tickets is not.
+4. **Comment on superseded stories; don't edit or close them.** A comment stating what
+   changed, which new stories replace which parts, and a pointer to the ADR gives the
+   story's owner everything needed to re-scope — the status change is their call.
+5. Mechanics worth knowing: Jira's REST v2 accepts wiki markup in descriptions
+   (`h2.`, `*bold*`, `{{code}}`, `*` bullets); create with `project`, `issuetype`,
+   `parent` (the epic), `summary`, `description`. Verify after creating by re-running
+   the parent search.
 
 ## Principles that run through every phase
 
