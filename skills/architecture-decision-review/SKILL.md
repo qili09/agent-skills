@@ -226,3 +226,13 @@ the ADR lands, offer to):
   generally: when a stakeholder argues from proximity ("it's embedded in X so it must
   live near X"), separate the planes — presentation, network, data, identity — and show
   which plane the requirement actually lives on.
+
+## Learning loop
+
+When a run hits friction this skill didn't anticipate — a wrong assumption, a missing
+step, a tool mechanic learned the hard way — append a dated note to `FIELD-NOTES.md`
+in this skill's directory *at the moment it happens*, not in an end-of-run recall pass.
+A clean run records nothing; do not manufacture observations. If the run produced notes,
+offer the user a skill retro at the end; codify into SKILL.md only patterns the user
+approves (recurring themes earn instructions, one-offs stay as notes), and clear
+codified entries from the notes file.
