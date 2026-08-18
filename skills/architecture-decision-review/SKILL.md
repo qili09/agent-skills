@@ -26,6 +26,12 @@ not bluff evidence-gathering — run the review in explicit "claimed vs. verifie
 and say which conclusions rest on unverified claims. Tool mechanics below use GitHub
 and Jira as examples; adapt to whatever SCM and tracker the project actually uses.
 
+- **Prior art before primary sources**: locate and read the project's own earlier
+  analyses of the same decision — assessments, ADRs, design docs in the project folder,
+  wiki pages, ticket attachments. The decision usually has a paper trail; it may already
+  answer questions you would otherwise flag as unverified, and a current claim that
+  contradicts the paper trail is itself a finding. Skipping this step produces redundant
+  asks to stakeholders that later need retracting.
 - **Repos and infrastructure-as-code**: read them directly. For GitHub repos, `gh api`
   lets you inventory without cloning — list branches by last-commit date as a signal
   for the live branch (the default branch is often stale, but recency alone misleads in
@@ -67,7 +73,12 @@ If the lavish skill is available and the session is interactive, build it there 
    Every option gets its strengths acknowledged — a comparison where the losers have no
    redeeming qualities reads as (and usually is) motivated reasoning. Rank *all*
    options, not just first place; the runner-up matters when conditions fail.
-4. **Cost/effort comparison table** — one column per option, one row per cost driver,
+4. **Sub-decision table** — when the decision decomposes into named sub-decisions (a
+   reviewer's question list, design choices inside the winning option), give each its
+   own row or control: the question, the recommendation pre-selected, and the one piece
+   of evidence that decides it. Don't fold them into option-card prose — reviewers
+   answer itemized questions; buried ones come back as another review round.
+5. **Cost/effort comparison table** — one column per option, one row per cost driver,
    with totals for recurring cost AND one-time effort. Cost rules:
    - Ranges, not points ("≈ $710–745/mo"), with the basis stated (list price, region,
      ±% confidence, currency and conversion rate).
@@ -75,18 +86,20 @@ If the lavish skill is available and the session is interactive, build it there 
      a ticket per change is not free).
    - Say how to firm the numbers up (pricing calculator, billing export) — estimates
      justify a decision, they do not go in a budget.
-5. **Concern → mitigation** — take the stakeholder's stated worries seriously, one row
+6. **Concern → mitigation** — take the stakeholder's stated worries seriously, one row
    each: the concern, the standard mitigation, and what residual risk remains.
-6. **Adoption conditions and revisit triggers** — a recommendation is rarely
+7. **Adoption conditions and revisit triggers** — a recommendation is rarely
    unconditional. Name the sign-offs it depends on (security review, owner agreement,
    privacy assessment) and the events that reopen the decision (a dependency getting a
    committed date, a scope change). For interim decisions, time-boxing with explicit
-   revisit triggers is what makes "interim" honest.
-7. **Q&A section** — grows during review (Phase 3); answers to stakeholder questions
+   revisit triggers is what makes "interim" honest. Some locks are phase-scoped rather
+   than permanent: record what the lock holds *while* ("cached reference data while the
+   batch channel exists") and the event that expires it.
+8. **Q&A section** — grows during review (Phase 3); answers to stakeholder questions
    live in the artifact so the document stays self-contained for later readers.
 
 Scale the artifact to the decision's stakes: a small or easily reversed decision may
-compress sections 4–7 into a short paragraph each; sections 1–3 are never skipped.
+compress sections 4–8 into a short paragraph each; sections 1–3 are never skipped.
 
 Throughout: values not yet decided stay **TBD** with the deciding owner named. Do not
 invent a concrete hostname, region, or sizing to make prose flow — a plausible-looking
@@ -108,6 +121,14 @@ Stakeholder annotations come in three kinds; handle each differently:
 - **New options** ("we could also deploy on-prem"): late options get first-class
   treatment — a full card, a column in the cost table, an honest re-ranking. Never
   bolt a late option on as a footnote to protect the existing recommendation.
+- **End-state visions** ("eventually we'll call the API directly and store nothing
+  locally"): when the stakeholder is right about a future state but not about today,
+  neither defend the recommendation unconditionally nor cave — scope it. Name the
+  vision as an explicit later phase with its own gating dependency, record which of
+  today's locks expire when that phase arrives, and re-grade your supporting reasons
+  honestly: conceding that three of four are transitional costs nothing if the fourth
+  still carries today's decision. This converts a stalemate about the future into
+  agreement about sequencing.
 
 Keep iterating until the stakeholder stops finding corrections. If the stakeholder
 goes quiet or is unavailable, do not stall: deliver the artifact as a review-ready
@@ -119,9 +140,10 @@ the current recommendation.
 
 When the stakeholder asks to record the decision:
 
-1. **Match the house style.** Read one or two existing ADRs in the repo (`docs/adr/` or
-   wherever they live) and mirror their structure, numbering, tone, and length. If no
-   ADRs exist, use: title, status, context, decision, consequences.
+1. **Match the house style.** Read one or two existing ADRs or assessments wherever the
+   project keeps them — `docs/adr/` in a repo, a project document folder, a wiki — and
+   mirror their structure, numbering, tone, and length. If none exist, use: title,
+   status, context, decision, consequences.
 2. **Status reflects reality.** If sign-offs are pending, the ADR is `proposed` with the
    conditions listed as a numbered section — not `accepted` with hopes.
 3. **Context section carries the comparison**, compressed: each rejected option gets a
@@ -137,8 +159,14 @@ When the stakeholder asks to record the decision:
    docs (e.g. CLAUDE.md) if the project uses them to record constraints, decisions, or
    open questions, and the solution-architecture doc if one exists. An ADR that contradicts the docs around it is worse than no ADR. Ask the
    user before adding change-log entries if the project has that convention.
-7. **Respect the repo's contribution rules**: if main is protected, commit to a fresh
-   branch and open a PR; follow the project's attribution and commit-message norms.
+7. **Respect the repo's contribution rules** (when the ADR lives in a repo): if main is
+   protected, commit to a fresh branch and open a PR; follow the project's attribution
+   and commit-message norms.
+8. **Close the loop on the originating thread.** Reviews usually start somewhere — a
+   ticket comment, a review request, a thread. The conclusions go back there as a reply
+   that answers the questions actually asked and points to the ADR; an ADR alone is
+   invisible to the people waiting in the thread. Tracker-comment mechanics are in
+   Phase 5 step 5 — they bite here too.
 
 ## Phase 5 — Translate the decision into tracker stories
 
@@ -170,7 +198,14 @@ the ADR lands, offer to):
    descriptions (`h2.`, `*bold*`, `{{code}}`, `*` bullets), but some instances require
    ADF or plain text — confirm the format with one test ticket before batch-creating.
    Create with `project`, `issuetype`, `parent` (the epic), `summary`, `description`.
-   Verify after creating by re-running the parent search.
+   Verify after creating by re-running the parent search. Comments have extra traps:
+   markdown→wiki converters commonly strip code spans and turn multi-underscore
+   identifiers into emphasis (`list_skip_codes` renders as list*skip*codes) — prefer
+   hyphenated or descriptive phrasing for identifiers in comments, and check the
+   returned body after the first write. Comments usually cannot be deleted through the
+   API, only edited — a regretted comment can only be repurposed, so the draft-first
+   gate matters double. Don't promise @-mentions until you've confirmed you can resolve
+   account IDs; plain names are the safe fallback.
 
 ## Principles that run through every phase
 
