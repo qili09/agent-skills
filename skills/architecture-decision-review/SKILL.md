@@ -1,6 +1,7 @@
 ---
 name: architecture-decision-review
-description: Run a rigorous, evidence-first review of an architecture or platform decision, land it as an ADR, and translate it into tracker stories. Use this whenever the user weighs two or more technical options and asks for advice, a recommendation, a comparison, or a justification — "should we use X or Y", "which project/platform should host this", "is it worth migrating", "help me justify this decision", "how much would we save" — even if they never say "ADR" or "architecture decision". Also use it when the user asks to draft or update an ADR, to create Jira/tracker stories from a design decision, or presents a decision already half-made and wants it validated. The heart of the skill is verifying the user's stated premises against primary sources before recommending, so trigger it even when the user sounds certain of the answer. Do NOT use it for generic technology overviews or casual comparisons with no project context to verify and no durable decision to record.
+description: Run a rigorous, evidence-first review of an architecture or platform decision, land it as an ADR, and translate it into tracker stories. Use this whenever the user weighs two or more technical options and asks for advice, a recommendation, a comparison, or a justification — "should we use X or Y", "which project/platform should host this", "is it worth migrating", "help me justify this decision", "how much would we save" — even if they never say "ADR" or "architecture decision". Also use it when the user asks to draft or update an ADR, to create Jira/tracker stories from a design decision, or presents a decision already half-made and wants it validated. The heart of the skill is verifying the user's stated premises against primary sources before recommending, so trigger it even when the user sounds certain of the answer. Do NOT use it for generic technology overviews or casual comparisons with no project context to verify and no durable decision to record. Optionally takes any number of source arguments (GitHub repos, website URLs, document paths) to seed the Phase 1 evidence gathering.
+argument-hint: "[source ...] — each source a GitHub repo (owner/name or URL), website/wiki URL, or document path"
 ---
 
 # Architecture Decision Review
@@ -14,6 +15,26 @@ Why this shape: architecture decisions arrive wrapped in a framing ("A is more s
 prose about the framing — it is checking the framing against what the code, config, and
 tickets actually say. Sometimes the evidence reverses the expected answer; that reversal
 is the most valuable thing you can deliver, and it must be stated plainly, not softened.
+
+## Arguments
+
+Sources passed at invocation: $ARGUMENTS
+
+The skill accepts any number of optional source arguments. Each one is a primary-source
+pointer for the review — a GitHub repo (`owner/name` or URL), a website or wiki URL, or
+a document (local file path, project-folder doc, tracker/Confluence link). Interpret
+each by shape: repo-looking values are read via `gh api`/clone, URLs are fetched, paths
+are read from disk.
+
+When sources are given, treat them as the pre-authorized starting set for Phase 1's
+access preflight: read them *before* asking the user for links or access, and fold what
+they show into the premise check. They seed the evidence base; they do not cap it — if
+the claims in the request need sources beyond those passed, list the gap in the
+preflight as usual. If a passed source is unreachable or ambiguous (a bare name that
+could be several repos), say so explicitly rather than guessing.
+
+When no sources are passed, nothing changes: derive the source list from the request
+during the access preflight as Phase 1 already describes.
 
 ## Phase 1 — Verify the premise
 
