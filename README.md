@@ -10,6 +10,7 @@ and compatible agents. Each skill lives in its own folder under `skills/` with a
 |---|---|
 | [architecture-decision-review](skills/architecture-decision-review/) | Evidence-first review of architecture/platform decisions: verify the stated premises against primary sources (repos, IaC, tickets), build an annotated comparison with honest cost ranges, iterate on stakeholder corrections, land the result as an ADR with adoption conditions and revisit triggers, and translate the decision into tracker (Jira) stories. |
 
+
 ## Installing a skill
 
 Copy (or symlink) the skill folder into your user-level skills directory:
