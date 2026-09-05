@@ -8,6 +8,7 @@ and compatible agents. Each skill lives in its own folder under `skills/` with a
 
 | Skill | What it does |
 |---|---|
+| [autonomous-reply](skills/autonomous-reply/) | Autonomously answer any inbound message — Gmail thread, Slack or Google Chat message, Jira issue assessment — grounded in supplied context sources (Drive docs, local files, GitHub repos, tickets). Detects the channel from the pointer's shape and auto-selects tone, format, and delivery route per channel, with hard guardrails: email is drafted but never sent; chat and tracker replies are delivered as paste-ready text only (connector-posted messages carry a non-removable bot attribution), so nothing is ever posted on the user's behalf. |
 | [architecture-decision-review](skills/architecture-decision-review/) | Evidence-first review of architecture/platform decisions: verify the stated premises against primary sources (repos, IaC, tickets), build an annotated comparison with honest cost ranges, iterate on stakeholder corrections, land the result as an ADR with adoption conditions and revisit triggers, and translate the decision into tracker (Jira) stories. |
 
 
