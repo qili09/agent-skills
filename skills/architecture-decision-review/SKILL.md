@@ -88,8 +88,12 @@ recommendation's load-bearing support.
 Produce a single reviewable surface the stakeholder can annotate, structured so the
 conclusion is visible in ten seconds and every claim beneath it is traceable to evidence.
 If the lavish skill is available and the session is interactive, build it there (HTML in
-`.lavish/`, open a session, poll for annotations). Otherwise write a standalone document
-(markdown or HTML) with the same structure:
+`.lavish/`, open a session, poll for annotations). Always attempt the launch — past
+server or polling failures are not a reason to pre-emptively skip it. If the server or
+poll fails *during this run*, the downgrade is scoped to feedback collection: the built
+artifact stays the deliverable, and stakeholder feedback moves to chat; do not silently
+drop the visual report. Otherwise (no lavish, or non-interactive session) write a
+standalone document (markdown or HTML) with the same structure:
 
 1. **The decision, named, at the top** — one line stating what is being decided and by
    when it matters.

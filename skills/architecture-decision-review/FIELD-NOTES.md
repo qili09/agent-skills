@@ -19,8 +19,18 @@ Entry format:
 _No open notes. The 2026-08-18 PROJ-18183 run's six findings were codified directly
 into SKILL.md (commit 3695025) before this file existed._
 
-## 2026-08-21 — lavish poll does not survive machine sleep
-During the PROJ-16600 banking-app pilot-gating review, the `lavish-axi poll` background task died with `SERVER_ERROR` three nights in a row (Aug 18→21): the local lavish server is killed when the laptop sleeps, and each restart requires re-running `lavish-axi <file>` (to restart the server + session) before `poll` works again. For multi-day review windows (stakeholder reviews around meetings), don't rely on a single long-lived poll: expect nightly restarts, and after ~2 silent days treat the stakeholder as quiet per Phase 3 — deliver the artifact as a review-ready draft and invite feedback via chat instead of babysitting the poll.
+## 2026-09-09 — RESOLVED: lavish server crashes were transient; never skip launching the report
+Two now-removed 2026-08-21 notes (PROJ-16600) reported `lavish-axi poll` dying with
+`SERVER_ERROR` and advised stopping restarts and reopening sessions "only on explicit
+request." Later runs (e.g. the 2026-08-31 FirstMate calm-mode review) ran full lavish
+sessions with long polls and no crashes — the failures were transient on that machine at
+that time, not a standing condition. The stale advice caused runs to skip launching the
+visual report entirely, which contradicts the user's standing preference and confused
+the review flow. Corrected rule (codified in SKILL.md Phase 2): always build AND open
+the lavish artifact; a polling/server failure downgrades feedback collection to chat,
+never the launch itself.
 
-## 2026-08-21 (addendum) — lavish server crashes are not sleep-related
-Correction to the note above: a same-day restart also died with `SERVER_ERROR` within hours, with an empty `~/.lavish-axi/server.log` and no surviving process — the server is crashing on its own on this machine, not just being killed by sleep. When lavish polling fails twice in a row, stop the restart loop entirely: the artifact HTML on disk is the deliverable, and stakeholder feedback should move to chat. Reopen a session only on explicit request.
+## 2026-09-09 — Jira Cloud REST v2 `search` is gone; use v3 `search/jql` (PROJ-20221)
+- What happened: the mcp-atlassian server stayed wedged ("Failed to configure OAuth session") even after a successful manual token refresh, so I fell back to direct REST. `GET /rest/api/2/search?jql=...` now returns **410 Gone** (Atlassian removed the legacy search endpoint). `GET /rest/api/3/search/jql?jql=...&fields=...` works with the same bearer token; `issue/<key>`, `user?accountId=`, and attachment `content` URLs still work on v2.
+- What would have prevented it: the direct-REST bypass in the memory/skill notes should name `search/jql` (v3) as the search endpoint. Also: quote `gh api "...?ref=develop"` URLs — zsh treats the `?` as a glob and errors with "no matches found".
+- Codify? (leave blank until retro)
