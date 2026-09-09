@@ -43,4 +43,4 @@ never the launch itself.
 ## 2026-09-09 — Requirements validation needs a literal "observed behaviour" pass before judging the spec (PROJ-20221)
 - What happened: the first premise check marked "all paths → one destination" as verified after probing two paths. Building a literal observed-behaviour section on the reviewer's request forced a 23-path probe and found a case-sensitive `/FR` prefix rule to a different (French) destination — a blocking error in the document and in the recommended option's config.
 - What would have prevented it: for "is the requirement captured correctly?" reviews, record observed behaviour exhaustively and literally (all record types, path variants, methods, headers, external vantage point) *before* comparing to the document; the document's own claims must not define the probe set.
-- Codify? (leave blank until retro)
+- Codify? RESOLVED 2026-09-09 — codified in SKILL.md Phase 1 as the "Behavioural claims get a literal observed-behaviour pass" bullet.

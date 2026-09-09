@@ -71,6 +71,14 @@ and Jira as examples; adapt to whatever SCM and tracker the project actually use
 - **Tickets**: read the actual issue tree, not just the top-level item. Children of an
   epic/initiative live on the *children's* parent field — search for them; do not
   conclude "nothing exists" from an empty subtask list.
+- **Behavioural claims get a literal observed-behaviour pass, not spot checks**: when a
+  claim describes how a system behaves ("all paths redirect to one destination", "every
+  record type goes through X"), enumerate and probe the input space exhaustively —
+  all record types, path variants, methods, headers, from an external vantage point —
+  *before* comparing against the document. The document's own claims must not define
+  the probe set: a spec that says "all paths" checked with two paths is not verified,
+  and the miss it hides (a case-sensitive prefix rule routing to a different
+  destination) can be a blocking error in both the document and the recommended option.
 - **Activity signals**: last-commit dates, merged-PR recency, and which environments
   actually exist distinguish a live platform from a stalled one. "Reinstate project X"
   means something very different when X turns out to be dev-only with prod commented out.
