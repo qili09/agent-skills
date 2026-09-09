@@ -1,7 +1,7 @@
 ---
 name: architecture-decision-review
 description: Run a rigorous, evidence-first review of an architecture or platform decision, land it as an ADR, and translate it into tracker stories. Use this whenever the user weighs two or more technical options and asks for advice, a recommendation, a comparison, or a justification — "should we use X or Y", "which project/platform should host this", "is it worth migrating", "help me justify this decision", "how much would we save" — even if they never say "ADR" or "architecture decision". Also use it when the user asks to draft or update an ADR, to create Jira/tracker stories from a design decision, or presents a decision already half-made and wants it validated. The heart of the skill is verifying the user's stated premises against primary sources before recommending, so trigger it even when the user sounds certain of the answer. Do NOT use it for generic technology overviews or casual comparisons with no project context to verify and no durable decision to record. Optionally takes any number of source arguments (GitHub repos, website URLs, document paths) to seed the Phase 1 evidence gathering.
-argument-hint: "[source ...] — each source a GitHub repo (owner/name or URL), website/wiki URL, or document path"
+argument-hint: "[source ...] [question] — sources are GitHub repos (owner/name or URL), website/wiki URLs, or document paths; remaining free text is the decision question"
 ---
 
 # Architecture Decision Review
@@ -18,13 +18,19 @@ is the most valuable thing you can deliver, and it must be stated plainly, not s
 
 ## Arguments
 
-Sources passed at invocation: $ARGUMENTS
+Passed at invocation: $ARGUMENTS
 
-The skill accepts any number of optional source arguments. Each one is a primary-source
-pointer for the review — a GitHub repo (`owner/name` or URL), a website or wiki URL, or
-a document (local file path, project-folder doc, tracker/Confluence link). Interpret
-each by shape: repo-looking values are read via `gh api`/clone, URLs are fetched, paths
-are read from disk.
+The invocation string may carry two kinds of content, mixed freely; separate them by
+shape:
+
+- **Sources** (any number, optional): primary-source pointers for the review — a GitHub
+  repo (`owner/name` or URL), a website or wiki URL, or a document (local file path,
+  project-folder doc, tracker/Confluence link). Repo-looking values are read via
+  `gh api`/clone, URLs are fetched, paths are read from disk.
+- **The decision question** (optional): any remaining free text is the request itself —
+  the decision to review ("should we split X into Y?"). Treat it exactly as if the user
+  had asked it in chat; if free text appears both here and in the chat message, read
+  them together as one request.
 
 When sources are given, treat them as the pre-authorized starting set for Phase 1's
 access preflight: read them *before* asking the user for links or access, and fold what
