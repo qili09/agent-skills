@@ -65,7 +65,8 @@ and Jira as examples; adapt to whatever SCM and tracker the project actually use
   repos using release branches or trunk-based deploys; corroborate with deploy/CI
   config and protected-branch settings), fetch the file tree
   (`git/trees/<branch>?recursive=1`), then pull the specific files that answer the
-  question (env configs, module lists, sizing). What *exists* in the repo — and what is
+  question (env configs, module lists, sizing). Quote any `gh api` URL containing `?`
+  (zsh treats it as a glob and fails with "no matches found"). What *exists* in the repo — and what is
   commented out, placeholder, or dormant — is evidence the user's summary may not reflect.
 - **Tickets**: read the actual issue tree, not just the top-level item. Children of an
   epic/initiative live on the *children's* parent field — search for them; do not
@@ -87,13 +88,14 @@ recommendation's load-bearing support.
 
 Produce a single reviewable surface the stakeholder can annotate, structured so the
 conclusion is visible in ten seconds and every claim beneath it is traceable to evidence.
-If the lavish skill is available and the session is interactive, build it there (HTML in
-`.lavish/`, open a session, poll for annotations). Always attempt the launch — past
-server or polling failures are not a reason to pre-emptively skip it. If the server or
-poll fails *during this run*, the downgrade is scoped to feedback collection: the built
-artifact stays the deliverable, and stakeholder feedback moves to chat; do not silently
-drop the visual report. Otherwise (no lavish, or non-interactive session) write a
-standalone document (markdown or HTML) with the same structure:
+If the lavish skill is available, build it there (HTML in `.lavish/`, open a session,
+poll for annotations). Always attempt the launch — past server or polling failures are
+not a reason to pre-emptively skip it, and neither is a harness "non-interactive" flag:
+what matters is whether the user can open a browser, and they usually can. If the server
+or poll fails *during this run*, the downgrade is scoped to feedback collection: the
+built artifact stays the deliverable, and stakeholder feedback moves to chat; do not
+silently drop the visual report. Otherwise (lavish unavailable, or `lavish-axi` itself
+fails) write a standalone document (markdown or HTML) with the same structure:
 
 1. **The decision, named, at the top** — one line stating what is being decided and by
    when it matters.
@@ -225,7 +227,11 @@ the ADR lands, offer to):
 4. **Comment on superseded stories; don't edit or close them.** A comment stating what
    changed, which new stories replace which parts, and a pointer to the ADR gives the
    story's owner everything needed to re-scope — the status change is their call.
-5. Mechanics worth knowing (Jira example): many REST v2 setups accept wiki markup in
+5. Mechanics worth knowing (Jira example): when the MCP/tracker integration is wedged
+   and you fall back to direct REST, note Jira Cloud removed the legacy search endpoint —
+   `GET /rest/api/2/search` returns 410 Gone; use `GET /rest/api/3/search/jql?jql=...&fields=...`
+   instead (single-issue `issue/<key>`, `user?accountId=`, and attachment `content` reads
+   still work on v2 with the same bearer token). Many REST v2 setups accept wiki markup in
    descriptions (`h2.`, `*bold*`, `{{code}}`, `*` bullets), but some instances require
    ADF or plain text — confirm the format with one test ticket before batch-creating.
    Create with `project`, `issuetype`, `parent` (the epic), `summary`, `description`.
