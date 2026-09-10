@@ -12,7 +12,6 @@ and compatible agents. Each skill lives in its own folder under `skills/` with a
 | [architecture-decision-review](skills/architecture-decision-review/) | Evidence-first review of architecture/platform decisions: verify the stated premises against primary sources (repos, IaC, tickets), build an annotated comparison with honest cost ranges, iterate on stakeholder corrections, land the result as an ADR with adoption conditions and revisit triggers, and translate the decision into tracker (Jira) stories. |
 | [time-report](skills/time-report/) | Log the time spent on a Jira story during a Claude Code session as a Tempo worklog (via the Tempo REST API so the Billing Key attribute is set; Jira API as warned fallback), computed from the session transcript: active time between messages rounded to 15 min, time charged to whichever story the conversation was on (one entry per story in a multi-story session, keys from user-authored text only), one confirmation line per story before posting, a local ledger to prevent double-logging, and a Stop hook that nudges whenever a story has unlogged time (15-min floor). |
 
-
 ## Installing a skill
 
 Copy (or symlink) the skill folder into your user-level skills directory:
