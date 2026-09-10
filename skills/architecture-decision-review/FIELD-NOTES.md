@@ -18,7 +18,7 @@ Entry format:
 
 _No open notes. Codified so far: the 2026-08-18 PROJ-18183 run's six findings (commit
 3695025); the PROJ-16600 lavish-crash notes, superseded by the always-launch rule in
-Phase 2 (commits 9f509bd, 3857805); and the three 2026-09-09 PROJ-20221 findings — Jira
+Phase 2; and the three 2026-09-09 PROJ-20221 findings — Jira
 v3 `search/jql` fallback (Phase 5), `gh api` URL quoting (Phase 1), unconditional lavish
 launch (Phase 2), and the literal observed-behaviour pass (Phase 1) (commits 3857805,
 d24a536)._
