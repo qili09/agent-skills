@@ -79,6 +79,17 @@ and Jira as examples; adapt to whatever SCM and tracker the project actually use
   the probe set: a spec that says "all paths" checked with two paths is not verified,
   and the miss it hides (a case-sensitive prefix rule routing to a different
   destination) can be a blocking error in both the document and the recommended option.
+  **On a second-round review, replay the same probe set against the new implementation**
+  — the author's own verification table is bounded by the author's model of the
+  behaviour, so "every behaviour is now measured, all checks pass" can be literally true
+  and still miss the case the first round flagged. A parity claim is verified only when
+  the reviewer's probe set passes against the new system, not when the author's does.
+- **Record what you could not test as claimed, not as skipped**: when the review machine
+  lacks the tooling to reproduce an author's forcing fact (no cloud CLI, no access to the
+  failing account), check it against vendor docs, release notes and public issue trackers,
+  say what those show, and carry it as "claimed — high/low plausibility — unverified here"
+  with the confirmation path named. The recommendation may still rest on it, but the
+  artifact must show that it does.
 - **Activity signals**: last-commit dates, merged-PR recency, and which environments
   actually exist distinguish a live platform from a stalled one. "Reinstate project X"
   means something very different when X turns out to be dev-only with prod commented out.
