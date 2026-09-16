@@ -33,9 +33,15 @@ Decisions and evidence behind the design: [PLAN.md](PLAN.md).
    (`primary_issue`, `rounded_human`) are also returned for reference.
 3. **Reconcile with the arguments.** An explicit `ISSUE-KEY`, duration, or description on
    the command line overrides the computed value (with `--issue KEY` the whole session is
-   charged to that key). A session that crossed several stories gets **one entry per story**
-   (user rule, 2026-09-09) — never merge them. Drop an allocation only if the user says
-   that story was merely mentioned; if the split looks wrong, show it and ask — do not guess.
+   charged to that key — the script replaces the per-story split with one allocation). A
+   session that crossed several stories gets **one entry per story** (user rule, 2026-09-09)
+   — never merge them. Drop an allocation only if the user says that story was merely
+   mentioned; if the split looks wrong, show it and ask — do not guess.
+   **Exception — the ticket the session created** (rule, 2026-09-16): when a story's slice
+   is under a minute and its key first appeared because the session *created* that ticket
+   (or the user only named it at the end to ask where to log), do not propose two 15-min
+   entries for one piece of work. Re-run with `--issue <KEY>` on the story the work belongs
+   to — normally the created ticket — and propose a single entry.
 4. **Draft the description** in one line, past tense, from what was actually done
    (e.g. “Validated requirements in the redirect solution doc; 13 findings”).
    No Claude/AI attribution, no markdown.

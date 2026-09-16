@@ -247,14 +247,26 @@ def main(argv):
     rnd = int(args[args.index("--round-min") + 1]) if "--round-min" in args else 15
     r = analyse(path, gap, rnd)
     if "--issue" in args:
+        # --issue KEY charges the WHOLE session to KEY (2026-09-16 field note): the per-story
+        # split is replaced by a single allocation, never filtered down to KEY's own slice.
         k = args[args.index("--issue") + 1]
+        unit = rnd * 60
+        logged = logged_for(r.get("session_id"), k)
+        logged_sec = sum(int(e.get("seconds", 0)) for e in logged)
+        remainder = max(0, r["active_seconds"] - logged_sec)
+        rem_rounded = int(round(remainder / unit)) * unit if logged else r["rounded_seconds"]
+        prior = next((a for a in r.get("allocations", []) if a["issue"] == k), None)
         r["primary_issue"] = k
-        r["already_logged"] = logged_for(r.get("session_id"), k)
-        r["allocations"] = [a for a in r.get("allocations", []) if a["issue"] == k] or [{
+        r["already_logged"] = logged
+        r["allocations"] = [{
             "issue": k, "active_seconds": r["active_seconds"], "rounded_seconds": r["rounded_seconds"],
             "rounded_human": r["rounded_human"], "started": r["started"], "ended": r["ended"],
-            "mentions": 0, "from_command_args": False, "already_logged": r["already_logged"],
-            "note": "issue forced by --issue; whole-session active time used"}]
+            "mentions": prior["mentions"] if prior else 0,
+            "from_command_args": prior["from_command_args"] if prior else False,
+            "already_logged": logged, "logged_seconds": logged_sec,
+            "unlogged_seconds": remainder, "unlogged_rounded_seconds": rem_rounded,
+            "unlogged_human": human(rem_rounded) if rem_rounded else "0m",
+            "note": "issue forced by --issue; whole-session active time charged to it"}]
     print(json.dumps(r, indent=2))
     return 0
 
