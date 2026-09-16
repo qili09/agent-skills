@@ -1,6 +1,6 @@
 ---
 name: autonomous-reply
-description: Autonomously answer an inbound message on any communication channel — reply to a Gmail thread, respond to a Slack or Google Chat message, or assess a Jira issue and draft the comment — grounding the response in supplied context sources (Google Drive docs, local files, GitHub repos, other tickets). Use this whenever there is an inbound message to answer and the user points at it — "reply to this email", "respond to Richard's Slack message", "assess this Jira story and add my comment", "draft a response to X, here's the background doc" — even if they never name the skill. The skill auto-selects tone, format, and delivery route per channel so the user never has to re-explain them. Do NOT use it for composing brand-new outbound messages with no inbound message to answer (ordinary drafting), and do NOT use it when the message is really asking to weigh technical options or validate a decision — that is architecture-decision-review's job; this skill answers messages, that one evaluates decisions.
+description: Autonomously answer an inbound message on any communication channel — reply to a Gmail thread, respond to a Slack or Google Chat message, or assess a Jira issue and draft the comment — grounding the response in supplied context sources (Google Drive docs, local files, GitHub repos, other tickets). Use this whenever there is an inbound message to answer and the user points at it — "reply to this email", "respond to Richard's Slack message", "assess this Jira story and add my comment", "draft a response to X, here's the background doc" — even if they never name the skill. The skill auto-selects tone, format, and delivery route per channel so the user never has to re-explain them. Also use it when the follow-up to a thread or meeting notes is a new tracker issue — "create a ticket from these notes and link it to ABC-123" — since the issue is grounded in the same sources the same way. Do NOT use it for composing brand-new outbound messages with no inbound message to answer (ordinary drafting), and do NOT use it when the message is really asking to weigh technical options or validate a decision — that is architecture-decision-review's job; this skill answers messages, that one evaluates decisions.
 argument-hint: "[message-pointer] [context-source ...] — message: Gmail/Slack/Chat URL, thread id, or Jira key; context: Drive URL, local path, GitHub repo, ticket/page key"
 ---
 
@@ -113,8 +113,35 @@ identify the agent: no attribution, no meta-commentary about how the reply was p
 - **Slack / Google Chat / Jira**: output the final text as a clearly marked paste-ready
   block — the last thing in the response, easy to copy whole. The user posts it.
 
-The only programmatic write this skill ever performs is creating an email draft. Everything
-else leaves the agent's hands as text.
+The only programmatic writes this skill performs are creating an email draft and, when
+explicitly requested, creating or linking a tracker issue (next section). Everything else
+leaves the agent's hands as text.
+
+## Tracker issue creation — the one non-reply task this skill accepts
+
+Sometimes the "reply" the thread needs is a new tracker issue: a meeting agreed to track a
+topic separately, or a thread asks for a follow-up ticket. When the user *explicitly* asks to
+create a tracker issue (and optionally link it to an existing one), do it through the tracker
+MCP — the issue is created under the user's own authenticated account, so the attribution
+concern that forbids connector posts on chat channels does not apply.
+
+Rules for that route:
+
+- **Explicit request only.** Never create an issue as a side effect of drafting a reply, and
+  never post the paste-ready comment yourself — comments stay paste-ready.
+- **Read the hierarchy first** (`jira_get_issue` on the referenced issue, its parent and epic)
+  and decide the new issue's type and placement from what the sources say. A topic the
+  thread wanted kept *separate* becomes a standalone story linked with "Relates", not a
+  sub-task under the same parent.
+- **Ground the description** the same way as a reply: background, goal, scope and
+  out-of-scope, dependencies, acceptance criteria, next steps — every line traceable to the
+  thread or a context source. Name the people and the decision date as the notes do.
+- **Sensible defaults, stated afterwards**: same project as the referenced issue, assigned to
+  the user, project-default priority. Report every default in the recap so the user can
+  adjust in the tracker.
+- **Create, then link** (`jira_create_issue` → `jira_create_issue_link`); report the new key.
+- **Still finish the reply.** If the notes assign the user a "share the ticket number" step,
+  end with the paste-ready comment for the originating thread as usual.
 
 ## Learning loop
 

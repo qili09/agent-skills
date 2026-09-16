@@ -5,4 +5,5 @@ misread, connector quirks, recurring tone corrections. Codified patterns get pro
 SKILL.md (with user approval) and cleared from here. Keep notes generic — no internal
 identifiers, hostnames, or message content; this repo is public.
 
-<!-- No notes yet. -->
+<!-- No open notes. -->
+<!-- 2026-09-16 tracker-issue-creation note codified into SKILL.md ("Tracker issue creation" section). -->
