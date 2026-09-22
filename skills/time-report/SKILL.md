@@ -81,6 +81,18 @@ Decisions and evidence behind the design: [PLAN.md](PLAN.md).
    returned `tempo_worklog_id` — so the user can veto anything (step 7 undoes). The script
    appends to `~/.claude/time-report/ledger.jsonl`. `post_worklog.py attributes` lists
    Tempo attributes.
+   **Then refresh the user's Tempo tab** (user rule, 2026-09-22): after the last post of
+   the run, execute
+   ```bash
+   scripts/refresh_tempo_tabs.sh
+   ```
+   It reloads open browser tabs whose URL contains `tempo` or `my-work` (Jira Cloud
+   serves the Tempo app under `/jira/apps/<uuid>/…/my-work/…`, so the app name never
+   appears in the URL) in Chrome/Edge/Safari, so the new entry is visible without a
+   manual refresh. Best-effort: it never fails the run — if it warns about Automation
+   permission, tell the user to approve the terminal controlling the browser in
+   System Settings → Privacy & Security → Automation (one-time). It deliberately does
+   not reload plain Jira issue tabs (a reload could discard a comment mid-typing).
 7. **Undo / repair.** `post_worklog.py list <ISSUE>`; `post_worklog.py delete <ISSUE> <JIRA_WORKLOG_ID>`;
    `post_worklog.py fix <JIRA_WORKLOG_ID> --attr _BillingKey_=<CHOICE>` sets attributes on an
    existing entry through Tempo.
