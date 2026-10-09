@@ -26,10 +26,11 @@ argument is a context source. Interpret each by shape — never ask the user to 
 | Pointer shape | Interpreted as | Read via |
 |---|---|---|
 | `mail.google.com` URL, `msg-f:`/`thread-f:` id | Gmail thread | Gmail connector (`get_thread`); Gmail permalinks embed decimal ids — convert decimal→hex to get the API thread id |
+| Gmail *calendar invitation* email | Gmail thread with one message | Gmail connector as above; check the user's calendar for the slot before drafting (see Phase 2) |
 | `*.slack.com/archives/<channel>/p<ts>` or channel id | Slack message/thread | Slack connector read tools (thread, channel history, user profiles) |
 | Issue key (`ABC-123`) or `*.atlassian.net/browse/...` | Jira issue | Tracker MCP (`jira_get_issue` + comments + links) or direct REST |
 | `chat.google.com` URL | Google Chat message | No connector — ask the user to paste the message text |
-| `docs.google.com` / `drive.google.com` URL or file id | Context: Drive document | Drive connector (`read_file_content`) |
+| `docs.google.com` / `drive.google.com` URL or file id | Context: Drive document | Drive connector (`read_file_content`); for Sheets with long cells use the xlsx export path (see Phase 3) |
 | Filesystem path | Context: local file/folder | Read directly |
 | `owner/name` or `github.com` URL | Context: GitHub repo/file | `gh api` — file tree + targeted file pulls, no clone |
 | Confluence/wiki URL, other ticket key | Context: page/ticket | Tracker/wiki MCP |
@@ -70,6 +71,11 @@ said, answers a question aimed at someone else, or contradicts an earlier messag
 thread is worse than no reply. Note who the audience is — a thread with directors or external
 parties on it changes how much detail and hedging is appropriate.
 
+A calendar-invitation email is a thread with one message, but the "thread state" lives in the
+user's calendar, not the mailbox: check the invited slot there before drafting. If the event
+is already accepted, the reply must not RSVP again or ask about availability — answer only
+the invitation's substantive question, if it has one.
+
 ## Phase 3 — Digest the context sources
 
 Read each supplied source and extract only what bears on the thread's ask. The grounding
@@ -78,6 +84,15 @@ thread itself, or be explicitly framed as the user's professional judgment. Gaps
 filled with plausible-sounding filler — they become questions back to the sender or a stated
 "to be confirmed". Name systems, hosts, and components precisely as the sources name them;
 do not substitute generic labels that the recipient will have to disambiguate.
+
+Spreadsheet sources need a second look. The Drive connector's `read_file_content` renders a
+Google Sheet as a text corpus that truncates long cells with `...` — multi-line pros/cons/notes
+columns lose exactly the content a reply needs. When any cell ends in an ellipsis, re-fetch
+with `download_file_content` using the xlsx export MIME type, base64-decode the `content`
+field from the saved tool-result JSON, and parse the workbook with stdlib `zipfile` +
+`xml.etree`: `xl/workbook.xml` and `xl/_rels/workbook.xml.rels` to locate the sheet, the
+matching `xl/worksheets/sheetN.xml` for cells, `xl/sharedStrings.xml` for their text
+(openpyxl is usually not installed). Full cell text comes back intact.
 
 ## Phase 4 — Classify what the sender actually asks
 

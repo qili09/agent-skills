@@ -7,3 +7,4 @@ identifiers, hostnames, or message content; this repo is public.
 
 <!-- No open notes. -->
 <!-- 2026-09-16 tracker-issue-creation note codified into SKILL.md ("Tracker issue creation" section). -->
+<!-- 2026-10-08 Drive Sheets truncation workaround and calendar-invitation pointer codified into SKILL.md (pointer table, Phase 2, Phase 3). -->
