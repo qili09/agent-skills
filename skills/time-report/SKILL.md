@@ -1,6 +1,6 @@
 ---
 name: time-report
-description: Log the time spent on a Jira story during the current Claude Code session as a Jira worklog (mirrored into Tempo Timesheets), computed from the session transcript instead of typed by hand. Use when the user says "log time", "log my time", "time report", "record this in Tempo", "how long did I spend on <KEY>", or when a Stop-hook nudge reports unlogged time — and at the natural end of any session in which a Jira story (e.g. PROJ-12345) was actively worked on, offer to run it. Do NOT use it for editing or reporting on Tempo timesheets in general, for estimating future effort, or for stories that were merely mentioned in passing.
+description: Log the time spent on a Jira story during the current Claude Code session as a Jira worklog (mirrored into Tempo Timesheets), computed from the session transcript instead of typed by hand. Use when the user says "log time", "log my time", "time report", "record this in Tempo", "how long did I spend on <KEY>", and — without asking — whenever a Stop-hook nudge arrives in context (a note beginning "time-report nudge:" that names unlogged time on a story): that nudge is an instruction to run this skill immediately and post autonomously. Also, at the natural end of any session in which a Jira story (e.g. PROJ-12345) was actively worked on, offer to run it. Do NOT use it for editing or reporting on Tempo timesheets in general, for estimating future effort, or for stories that were merely mentioned in passing.
 argument-hint: "[ISSUE-KEY] [duration e.g. 1h30m] [description] — all optional; defaults are computed from the session transcript"
 ---
 
@@ -19,14 +19,16 @@ Decisions and evidence behind the design: [PLAN.md](PLAN.md).
 1. **Locate the transcript.** `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`. The
    session id is in the scratchpad path given in the environment; the cwd slug is the
    working directory with `/` replaced by `-`. If in doubt, pick the most recently
-   modified `.jsonl` in that folder.
+   modified `.jsonl` in that folder. A Stop-hook nudge already names the transcript path
+   and session id — use those verbatim.
 2. **Compute the proposal.**
    ```bash
    python3 scripts/session_time.py <transcript.jsonl> [--issue KEY]
    ```
    Output: `allocations[]` — **one per story the session worked on** — each with `issue`,
    `active_seconds`, `rounded_seconds`/`rounded_human`, `started`, `ended`, `already_logged`,
-   and `unlogged_*` (the remainder not yet in the ledger). Rules: active time is the sum of
+   `unlogged_*` (the remainder not yet in the ledger), and `extendable` (the Tempo worklog
+   already posted *today* from this session for that story, if any — see step 6). Rules: active time is the sum of
    gaps ≤ 20 min between consecutive records; time is charged to the story the conversation
    was on at that moment (a user message naming a story switches it); each story is rounded
    to 15 min with a 15-min floor. Keys come only from user-authored text (slash-command args
@@ -65,7 +67,8 @@ Decisions and evidence behind the design: [PLAN.md](PLAN.md).
    per-story split looks wrong (step 3), or (c) the user gave a duration/story that
    contradicts the computed one. If a story is `already_logged` in this session, post
    only its `unlogged_human` remainder (a continued session), or skip it silently when
-   the remainder is 0m.
+   the remainder is 0m. Ledger entries with `via: manual` are time the user entered by
+   hand (`post_worklog.py mark`); they count as logged like any other.
 6. **Post via Tempo — once per story** (needed for attributes; the script falls
    back to Jira only if the Tempo token is missing and then warns that the billing key was
    not set). **Date the worklog with the current date/time** (user rule, 2026-09-22): pass
@@ -77,6 +80,17 @@ Decisions and evidence behind the design: [PLAN.md](PLAN.md).
    python3 scripts/post_worklog.py post <ISSUE> <seconds> <now-iso> "<description>" \
        --session <session-id> --attr _BillingKey_=<CHOICE>
    ```
+   **Continued session — extend, do not add** (user rule, 2026-10-29): when the allocation
+   carries `extendable`, a Tempo entry for this story was already posted today from this
+   session. Grow that entry instead of creating a second one for the same day:
+   ```bash
+   python3 scripts/post_worklog.py extend <ISSUE> <tempo_worklog_id> +<unlogged_rounded_seconds> \
+       "<description covering the whole day's work on the story>" --session <session-id>
+   ```
+   The `+delta` form adds to whatever Tempo holds *now* (the user may have edited the entry
+   by hand in the meantime); the description replaces the old one, so rewrite it to cover
+   both the earlier and the new work. The ledger records only the delta. An entry posted
+   on an earlier day is not extended — a new day gets a new entry.
    Afterwards report, per story: duration, date, billing key, description, and the
    returned `tempo_worklog_id` — so the user can veto anything (step 7 undoes). The script
    appends to `~/.claude/time-report/ledger.jsonl`. `post_worklog.py attributes` lists
@@ -95,15 +109,26 @@ Decisions and evidence behind the design: [PLAN.md](PLAN.md).
    not reload plain Jira issue tabs (a reload could discard a comment mid-typing).
 7. **Undo / repair.** `post_worklog.py list <ISSUE>`; `post_worklog.py delete <ISSUE> <JIRA_WORKLOG_ID>`;
    `post_worklog.py fix <JIRA_WORKLOG_ID> --attr _BillingKey_=<CHOICE>` sets attributes on an
-   existing entry through Tempo.
+   existing entry through Tempo. `post_worklog.py mark <ISSUE> <seconds> --session <id>` records
+   time the user logged by hand so the nudge and the remainder maths stop counting it (ledger
+   only, nothing posted) — use it when the user says "I already entered that manually".
 
-## Nudge (Stop hook)
+## Nudge (Stop hook) — the autonomous trigger
 
-`hooks/stop-nudge.sh` reads the hook's `transcript_path` and prints a `systemMessage` when
-the session has any unlogged active time on a story (≥ 1 min), at most once per hour per
-session. Registered in `~/.claude/settings.json` under `hooks.Stop`. It only reminds; it
-never posts. User rule (2026-09-09): every session that touched a story gets logged;
-work under 15 minutes is logged as 15 minutes.
+`hooks/stop-nudge.sh` runs after every turn (registered in `~/.claude/settings.json` under
+`hooks.Stop`). When the session has unlogged active time on a story (≥ 1 min) it returns
+`hookSpecificOutput.additionalContext` — text Claude Code appends to the conversation and
+hands back to the model, which then runs this skill and posts without asking. It fires at
+most once per **two hours** per session (user rule, 2026-10-29); in a session that keeps
+going, the next nudge extends the day's existing entry (step 6) rather than adding one.
+The hook itself never posts; the model does, through the normal workflow.
+
+Why `additionalContext` and not `systemMessage` (2026-10-29): a `systemMessage` is only
+printed to the user's terminal and never enters the model's context, so the skill could not
+trigger from it and weeks of nudges went unseen. Loop guard: Claude Code sets
+`stop_hook_active` in the hook input when the model is already continuing because of a
+Stop hook; the script then prints nothing. User rule (2026-09-09): every session that
+touched a story gets logged; work under 15 minutes is logged as 15 minutes.
 
 ## Guardrails
 

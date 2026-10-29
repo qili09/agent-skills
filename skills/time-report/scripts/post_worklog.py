@@ -9,6 +9,12 @@ Usage:
   post_worklog.py delete <ISSUE> <JIRA_WORKLOG_ID>
   post_worklog.py attributes                        # list Tempo work attributes + options (needs Tempo token)
   post_worklog.py fix    <JIRA_WORKLOG_ID> [--attr KEY=VALUE ...]   # set attributes on an existing worklog via Tempo
+  post_worklog.py extend <ISSUE> <TEMPO_WORKLOG_ID> +<DELTA_SECONDS>|<NEW_TOTAL_SECONDS> "<description>" [--session ID] [--dry-run]
+                         # grow today's existing Tempo entry (continued session) instead of adding a second one.
+                         # Prefer +<delta>: it adds to whatever Tempo holds now (the user may have edited the
+                         # entry by hand). The ledger records only the delta so per-session totals stay exact
+  post_worklog.py mark   <ISSUE> <SECONDS> --session ID ["<note>"]   # ledger-only: time the user logged by hand,
+                         # so the nudge/skill never re-posts it (posts nothing to Tempo or Jira)
 
 Tokens:
   Jira : ~/.mcp-atlassian/oauth-<client_id>.json (auto-refresh; client id/secret from ~/.claude.json)
@@ -240,6 +246,52 @@ def fix(jira_wid, attrs):
                       "attributes": r.get("attributes")}, indent=2))
 
 
+def extend(issue, tid, new_total, description, session=None, dry=False):
+    """Update an existing Tempo worklog's duration (and description) in place — used when a
+    session keeps going after its first entry of the day (user rule, 2026-10-29: 2-hour cadence,
+    later nudges extend the same entry). Ledger gets the delta only."""
+    tid = int(tid)
+    w = tempo("GET", f"worklogs/{tid}")
+    old = int(w["timeSpentSeconds"])
+    new_total = old + int(new_total[1:]) if str(new_total).startswith("+") else int(new_total)
+    if new_total <= old:
+        sys.exit(f"new total {new_total}s is not larger than the current {old}s — nothing to extend")
+    body = {
+        "issueId": int((w.get("issue") or {}).get("id")),
+        "timeSpentSeconds": new_total,
+        "startDate": w["startDate"],
+        "startTime": w.get("startTime") or "09:00:00",
+        "description": description or w.get("description") or "",
+        "authorAccountId": (w.get("author") or {}).get("accountId"),
+        "attributes": [{"key": a["key"], "value": a.get("value")}
+                       for a in (w.get("attributes") or {}).get("values", [])],
+    }
+    if dry:
+        print(json.dumps({"dry_run": True, "via": "tempo-extend", "issue": issue, "tempo_worklog_id": tid,
+                          "from_seconds": old, "body": body}, indent=2))
+        return
+    r = tempo("PUT", f"worklogs/{tid}", body)
+    ledger_append({"posted_at": datetime.now(timezone.utc).isoformat(), "session_id": session, "issue": issue,
+                   "seconds": new_total - old, "started": f"{body['startDate']}T{body['startTime']}Z",
+                   "worklog_id": None, "tempo_worklog_id": tid, "attributes": body["attributes"],
+                   "description": body["description"], "via": "tempo-extend", "total_seconds": new_total})
+    print(json.dumps({"ok": True, "via": "tempo-extend", "tempo_worklog_id": tid, "issue": issue,
+                      "from_seconds": old, "timeSpentSeconds": r.get("timeSpentSeconds"),
+                      "attributes": (r.get("attributes") or {}).get("values")}, indent=2))
+
+
+def mark(issue, seconds, session, note=""):
+    """Record time the user entered by hand so the ledger (and therefore the nudge and the
+    skill's remainder maths) treats it as logged. Writes nothing to Tempo or Jira."""
+    if not session:
+        sys.exit("mark needs --session <id>: the ledger is keyed by session")
+    entry = {"posted_at": datetime.now(timezone.utc).isoformat(), "session_id": session, "issue": issue,
+             "seconds": int(seconds), "started": None, "worklog_id": None, "tempo_worklog_id": None,
+             "attributes": [], "description": note or "logged manually by the user", "via": "manual"}
+    ledger_append(entry)
+    print(json.dumps({"ok": True, "via": "manual", "issue": issue, "seconds": int(seconds), "session_id": session}))
+
+
 def list_(issue):
     r = call("GET", f"issue/{issue}/worklog")
     for w in r.get("worklogs", []):
@@ -271,6 +323,13 @@ def main(a):
         attributes()
     elif cmd == "fix":
         fix(a[2], parse_attrs(a))
+    elif cmd == "extend":
+        session = a[a.index("--session") + 1] if "--session" in a else None
+        extend(a[2], a[3], a[4], a[5] if len(a) > 5 and not a[5].startswith("--") else "", session, "--dry-run" in a)
+    elif cmd == "mark":
+        session = a[a.index("--session") + 1] if "--session" in a else None
+        rest = [x for i, x in enumerate(a[4:], 4) if not x.startswith("--") and a[i - 1] != "--session"]
+        mark(a[2], a[3], session, rest[0] if rest else "")
     else:
         print(__doc__)
         return 2

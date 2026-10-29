@@ -3,7 +3,10 @@
 
 Usage:
   session_time.py <transcript.jsonl> [--issue KEY] [--gap-min 20] [--round-min 15] [--json]
-  session_time.py <transcript.jsonl> --nudge          # Stop-hook mode: print systemMessage JSON or nothing
+  session_time.py <transcript.jsonl> --nudge [--stop-hook-active] [--cooldown-min 120]
+        # Stop-hook mode: print a hookSpecificOutput/additionalContext JSON (which Claude Code feeds
+        # back to the model so the skill runs autonomously) or nothing. --stop-hook-active mirrors the
+        # hook input flag of the same name and always prints nothing (loop guard).
 
 Rules (approved 2026-09-09):
   * Jira keys are taken only from user-authored text (slash-command args and prose),
@@ -12,6 +15,9 @@ Rules (approved 2026-09-09):
   * Rounded to the nearest round-min, minimum one round-min.
   * Time is charged to the story the conversation was on at each moment (a user message naming
     a story switches the current story); one session across several stories → one allocation each.
+  * (2026-10-29) A story already posted via Tempo *today* from this session is "extendable": the
+    allocation names that Tempo worklog id and the new total, so the skill updates the existing
+    entry instead of adding a second one for the same day.
 """
 import json, os, re, sys, time
 from datetime import datetime, timezone
@@ -148,6 +154,7 @@ def analyse(path, gap_min=20, round_min=15):
         remainder = max(0, int(sec) - logged_sec)
         # remainder rounds to the same 15-min grid; below half a unit it is not worth an entry
         rem_rounded = int(round(remainder / unit)) * unit if logged else rnd(sec)
+        ext = extendable_entry(logged)
         allocations.append({
             "issue": k,
             "active_seconds": int(sec),
@@ -162,6 +169,8 @@ def analyse(path, gap_min=20, round_min=15):
             "unlogged_seconds": remainder,
             "unlogged_rounded_seconds": rem_rounded,
             "unlogged_human": human(rem_rounded) if rem_rounded else "0m",
+            "extendable": ext,
+            "extend_to_seconds": (ext["seconds_so_far"] + rem_rounded) if ext else None,
         })
     primary = allocations[0]["issue"] if allocations else None
     return {
@@ -181,6 +190,29 @@ def analyse(path, gap_min=20, round_min=15):
         "allocations": allocations,
         "already_logged": logged_for(session_id, primary),
     }
+
+
+def local_day(iso):
+    """Local calendar day of an ISO timestamp (naive → UTC)."""
+    try:
+        dt = parse_ts(iso)
+    except Exception:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone().date().isoformat()
+
+
+def extendable_entry(logged):
+    """The Tempo worklog posted *today* (local day) for this session+story, if any, with the
+    seconds already attributed to it across the ledger (original post + later extensions)."""
+    today = datetime.now().astimezone().date().isoformat()
+    todays = [e for e in logged if e.get("tempo_worklog_id") and local_day(e.get("posted_at", "")) == today]
+    if not todays:
+        return None
+    tid = todays[-1]["tempo_worklog_id"]
+    so_far = sum(int(e.get("seconds", 0)) for e in logged if e.get("tempo_worklog_id") == tid)
+    return {"tempo_worklog_id": tid, "seconds_so_far": so_far, "posted_at": todays[-1].get("posted_at")}
 
 
 def human(sec):
@@ -203,9 +235,18 @@ def logged_for(session_id, issue):
     return out
 
 
-def nudge(path, min_active_min=1, cooldown_min=60):
+def nudge(path, stop_hook_active=False, min_active_min=1, cooldown_min=120):
     """Any real work on a story is worth logging (Qi, 2026-09-09): nudge as soon as there is
-    at least one minute of active time on any story that has no ledger entry yet."""
+    at least one minute of active time on any story that has no ledger entry yet.
+
+    2026-10-29: the nudge is returned as Stop-hook `additionalContext`, which Claude Code feeds
+    back to the model (a `systemMessage` is only printed to the user and was being missed), so
+    the skill runs on its own. Cooldown 120 min per session (user rule, 2026-10-29); later
+    nudges in the same session extend the day's existing Tempo entry. `stop_hook_active` is
+    the hook-input flag set when the model is already continuing because of a Stop hook — we
+    then stay silent so the hook can never loop."""
+    if stop_hook_active:
+        return None
     r = analyse(path)
     if r.get("error"):
         return None
@@ -226,10 +267,19 @@ def nudge(path, min_active_min=1, cooldown_min=60):
     state[r["session_id"]] = now
     os.makedirs(os.path.dirname(NUDGE_STATE), exist_ok=True)
     json.dump(state, open(NUDGE_STATE, "w"))
-    parts = ", ".join(f"{a['unlogged_human']} on {a['issue']}" + (" (since last entry)" if a["already_logged"] else "")
-                      for a in pending)
-    return {"systemMessage": (f"time-report: unlogged work in this session — {parts}. "
-                              f"Say \"log time\" (or /time-report) to post it to Tempo.")}
+    def describe(a):
+        s = f"{a['unlogged_human']} on {a['issue']}"
+        if a.get("extendable"):
+            s += (f" (extend today's Tempo worklog {a['extendable']['tempo_worklog_id']} "
+                  f"by {a['unlogged_human']})")
+        elif a["already_logged"]:
+            s += " (since last entry)"
+        return s
+    parts = "; ".join(describe(a) for a in pending)
+    text = (f"time-report nudge: unlogged work in this session — {parts}. "
+            f"Invoke the time-report skill now and post autonomously (no confirmation gate); "
+            f"transcript: {path}; session: {r['session_id']}.")
+    return {"hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": text}}
 
 
 def main(argv):
@@ -239,7 +289,8 @@ def main(argv):
     path = argv[1]
     args = argv[2:]
     if "--nudge" in args:
-        out = nudge(path)
+        cd = int(args[args.index("--cooldown-min") + 1]) if "--cooldown-min" in args else 120
+        out = nudge(path, stop_hook_active="--stop-hook-active" in args, cooldown_min=cd)
         if out:
             print(json.dumps(out))
         return 0
@@ -256,6 +307,7 @@ def main(argv):
         remainder = max(0, r["active_seconds"] - logged_sec)
         rem_rounded = int(round(remainder / unit)) * unit if logged else r["rounded_seconds"]
         prior = next((a for a in r.get("allocations", []) if a["issue"] == k), None)
+        ext = extendable_entry(logged)
         r["primary_issue"] = k
         r["already_logged"] = logged
         r["allocations"] = [{
@@ -266,6 +318,7 @@ def main(argv):
             "already_logged": logged, "logged_seconds": logged_sec,
             "unlogged_seconds": remainder, "unlogged_rounded_seconds": rem_rounded,
             "unlogged_human": human(rem_rounded) if rem_rounded else "0m",
+            "extendable": ext, "extend_to_seconds": (ext["seconds_so_far"] + rem_rounded) if ext else None,
             "note": "issue forced by --issue; whole-session active time charged to it"}]
     print(json.dumps(r, indent=2))
     return 0

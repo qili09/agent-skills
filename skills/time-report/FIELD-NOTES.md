@@ -16,11 +16,6 @@ Entry format:
 
 ---
 
-
-
-## 2026-09-09 — Jira-native worklog leaves Tempo "billing key" empty (first live run)
-- What happened: the first real entry synced into Tempo but the user saw the Tempo *billing key* attribute empty. Jira's worklog API has no notion of Tempo work attributes; only Tempo's own REST API (api.tempo.io/4, personal Tempo token) can set them, or the attribute derives from the issue's Tempo Account field.
-- What would have prevented it: the sync test should have checked the Tempo entry's attributes, not just its presence. Backend decision needs revisiting: Tempo REST API for posting (with attribute options fetched from Tempo), Jira API kept for read/delete.
-- Codify? (leave blank until retro)
-
-<!-- 2026-09-16 `--issue` filter quirk + created-ticket single-entry rule: codified (session_time.py fix, SKILL.md step 3). -->
+<!-- No open notes. -->
+<!-- 2026-09-09 Jira-native worklog leaves Tempo billing key empty: codified (Tempo REST posting path, SKILL.md step 6 + Guardrails). -->
+<!-- 2026-10-29 nudge never reached the model: codified (hook additionalContext + stop_hook_active guard, 120-min cooldown, post_worklog extend/mark, SKILL.md description + step 6 + Nudge section). -->
